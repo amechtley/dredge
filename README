@@ -22,5 +22,5 @@ THE SOFTWARE.
 
 This repository contains a Python package with data mining utilities. It was
 developed using Python 2.7.2 and has the following dependencies:
-    - lxml (http://lxml.de/)
-    - bs4 (http://www.crummy.com/software/BeautifulSoup/)
+    - lxml  (http://lxml.de/)
+    - bs4   (http://www.crummy.com/software/BeautifulSoup/)
