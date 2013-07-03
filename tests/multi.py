@@ -26,15 +26,14 @@ Module to test dredge.multi.
 
 import collections
 import csv
-import hashlib
 import itertools
 import lxml.etree
 import os
 import re
 import unittest
-import uuid
 import shutil
 import dredge.multi
+import dredge.tests
 
 ## paths to test files
 _test_files = [
@@ -130,9 +129,7 @@ class TestDoMultiParseToCSV(unittest.TestCase):
             parser_func is expected to be a namedtuple type with an attribute
             called 'id'.
         """
-        self.temp_directory = os.path.join(
-            os.getenv('HOME'), hashlib.sha224(str(uuid.getnode())).hexdigest()
-        )
+        self.temp_directory = dredge.tests.get_temp_directory()
         dredge.multi.do_multi_parse_to_csv(
             file_paths=_test_files,
             output_folder=self.temp_directory,
@@ -142,6 +139,12 @@ class TestDoMultiParseToCSV(unittest.TestCase):
             delimiter=',',
             are_ids_unique=True
         )
+
+    def tearDown(self):
+        """
+        Clean up the temp directory.
+        """
+        shutil.rmtree(self.temp_directory)
 
     def test_intermediate_output(self):
         """
@@ -179,13 +182,6 @@ class TestDoMultiParseToCSV(unittest.TestCase):
             )
         )
         self.assertEqual(entries, _expected_xml_results)
-
-
-    def tearDown(self):
-        """
-        Clean up the temp directory.
-        """
-        shutil.rmtree(self.temp_directory)
 
 
 class TestDoMultiProcess(unittest.TestCase):
@@ -302,8 +298,10 @@ class TestSortFilePathsForLoadBalancing(unittest.TestCase):
     """
     Test the sort_file_paths_for_load_balancing() method.
     """
-
     def test_sorting_files(self):
+        """
+        Sort the test files assuming four tasks.
+        """
         test_files_dir = os.path.join(os.path.dirname(__file__), 'files')
         expected = (
             os.path.join(test_files_dir, '08.xml'),  # 193 bytes +

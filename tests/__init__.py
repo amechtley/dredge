@@ -23,3 +23,21 @@ THE SOFTWARE.
 
 Test modules.
 """
+
+import hashlib
+import os
+import shutil
+import uuid
+
+
+def get_temp_directory():
+    """
+    Get a path to a temporary writable directory on disk.
+    """
+    directory = os.path.join(
+        os.getenv('HOME'), hashlib.sha224(str(uuid.getnode())).hexdigest()
+    )
+    if os.path.exists(directory):
+        shutil.rmtree(directory)
+    os.makedirs(directory)
+    return directory
