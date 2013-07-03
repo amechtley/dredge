@@ -69,6 +69,9 @@ def do_multi_parse_to_csv(
         csv_headers = test_entry._fields
     else:
         csv_headers = test_entry[0]._fields
+    # ensure the output directory exists
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
     # do the multiprocess
     do_multi_process(
         sorted_file_paths,
@@ -189,15 +192,17 @@ def get_multiprocess_slice_ranges(num_tasks, data_count):
     Gets the slice ranges for cutting up a multiprocess job.
     @param num_tasks: The number of tasks to divide the data over.
     @param data_count: The size of the tuple to be multiprocessed.
-    @return: A list of tuples that are (slice_start, slice_end)
+    @return: A tuple of tuples that are (slice_start, slice_end).
     """
     slice_size = data_count / num_tasks
-    slice_ranges = [
-        (x * slice_size, (x + 1) * slice_size)
+    remainder = data_count % num_tasks
+    return tuple(
+        (
+            x * slice_size + (x if x < remainder else remainder),
+            (x + 1) * slice_size + (x + 1 if x < remainder else remainder)
+        )
         for x in xrange(num_tasks)
-    ]
-    slice_ranges[-1] = (slice_ranges[-1][0], data_count)
-    return slice_ranges
+    )
 
 
 def get_num_tasks(cores_to_reserve, data):
