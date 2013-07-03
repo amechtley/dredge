@@ -35,10 +35,6 @@ import urllib2
 
 ## name of a csv file to dump info about items for which there were errors
 ERROR_LOG_NAME = 'errors.csv'
-## the html parser
-HTML_PARSER = 'lxml'
-## the xml parser
-XML_PARSER = ['lxml', 'xml']
 
 
 def mass_download(
@@ -121,9 +117,8 @@ def mass_download(
                     file_on_disk.write(downloaded_data)
             # otherwise look for the page counter in the data
             else:
-                soup = bs4.BeautifulSoup(
-                    urllib2.urlopen(url).read(), HTML_PARSER  # assume it's html
-                )
+                # assume it's html
+                soup = bs4.BeautifulSoup(urllib2.urlopen(url).read(), 'lxml')
                 max_page = get_max_page_expression(soup)
                 for page_number in xrange(1, max_page + 1):
                     # skip if a file has already been downloaded
