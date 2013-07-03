@@ -21,5 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-This package contains modules for assisting with data mining work.
+This package contains modules for assisting with data mining work. It was
+developed using Python 2.7.2 and has the following dependencies:
+    - bs4   (http://www.crummy.com/software/BeautifulSoup/)
+    - lxml  (http://lxml.de/)
 """
