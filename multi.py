@@ -64,11 +64,12 @@ def do_multi_parse_to_csv(
     )
     # get the csv headers by just parsing a test file
     test_entry = parser_func(sorted_file_paths[0])
-    cls = test_entry.__class__
     if hasattr(test_entry, '_fields'):
         csv_headers = test_entry._fields
+        cls = test_entry.__class__
     else:
         csv_headers = test_entry[0]._fields
+        cls = test_entry[0].__class__
     # ensure the output directory exists
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -88,7 +89,7 @@ def do_multi_parse_to_csv(
     # stitch files together
     ids = set()
     lines = list()
-    error_lines = list()
+    error_lines = list(['file', 'error'])
     for i in xrange(task_count):
         path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
         with open(path_to_csv) as csv_file:
@@ -102,15 +103,24 @@ def do_multi_parse_to_csv(
         )
         with open(path_to_error_log) as csv_file:
             error_lines += [row for row in csv.reader(csv_file)][1:]
+    # clean up final output
     path_to_final_output = os.path.join(output_folder, '%s.csv' % task_name)
     with open(path_to_final_output, 'w+') as csv_file:
         csv.writer(csv_file, delimiter=delimiter).writerows(lines)
     path_to_final_error_log = os.path.join(
         output_folder, '%s-errors.csv' % task_name
     )
+    # clean up error log
     with open(path_to_final_error_log, 'w+') as csv_file:
-        csv.writer.writerow(['file', 'error'])
         csv.writer(csv_file).writerows(error_lines)
+    # remove intermediate files
+    for i in xrange(task_count):
+        path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
+        os.remove(path_to_csv)
+        path_to_error_log = os.path.join(
+            output_folder, '%s-%i-errors.csv' % (task_name, i)
+        )
+        os.remove(path_to_error_log)
 
 
 def do_multi_process(data, task, cores_to_reserve=1, **kwargs):
