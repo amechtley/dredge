@@ -88,6 +88,7 @@ def do_multi_parse_to_csv(
     # stitch files together
     ids = set()
     lines = list()
+    error_lines = list()
     for i in xrange(task_count):
         path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
         with open(path_to_csv) as csv_file:
@@ -96,9 +97,20 @@ def do_multi_parse_to_csv(
                 if not are_ids_unique or entry.id not in ids:
                     lines.append(row)
                     ids.add(entry.id)
+        path_to_error_log = os.path.join(
+            output_folder, '%s-%i-errors.csv' % (task_name, i)
+        )
+        with open(path_to_error_log) as csv_file:
+            error_lines += [row for row in csv.reader(csv_file)][1:]
     path_to_final_output = os.path.join(output_folder, '%s.csv' % task_name)
     with open(path_to_final_output, 'w+') as csv_file:
         csv.writer(csv_file, delimiter=delimiter).writerows(lines)
+    path_to_final_error_log = os.path.join(
+        output_folder, '%s-errors.csv' % task_name
+    )
+    with open(path_to_final_error_log, 'w+') as csv_file:
+        csv.writer.writerow(['file', 'error'])
+        csv.writer(csv_file).writerows(error_lines)
 
 
 def do_multi_process(data, task, cores_to_reserve=1, **kwargs):
