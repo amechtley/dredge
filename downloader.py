@@ -112,7 +112,7 @@ def mass_download(
                 # save the data to a file
                 path_to_file_on_disk = os.path.join(
                     output_directory,
-                    '%s.%s' % (urllib2.quote(item_id), file_extension)
+                    '%s.%s' % (urllib2.quote(item_id, safe=''), file_extension)
                 )
                 with open(path_to_file_on_disk, 'w+') as file_on_disk:
                     file_on_disk.write(downloaded_data)
@@ -124,7 +124,7 @@ def mass_download(
                 for page_number in xrange(1, max_page + 1):
                     # skip if a file has already been downloaded
                     file_name = '%s-%04i.html' % (
-                        urllib2.quote(item_id), page_number
+                        urllib2.quote(item_id, safe=''), page_number
                     )
                     if file_name in os.listdir(output_directory):
                         continue
