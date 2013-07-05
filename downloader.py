@@ -93,7 +93,7 @@ def mass_download(
     downloaded_file_name_match = re.compile('.*[.]' + file_extension + '$')
     existing_downloaded_data = set(
         [
-            os.path.splitext(file_name)[0]
+            urllib2.unquote(os.path.splitext(file_name)[0])
             for file_name in os.listdir(output_directory)
             if downloaded_file_name_match.match(file_name)
         ] + error_items
