@@ -89,7 +89,7 @@ def do_multi_parse_to_csv(
     # stitch files together
     ids = set()
     lines = list()
-    error_lines = list(['file', 'error'])
+    error_lines = [['file', 'error']]
     for i in xrange(task_count):
         path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
         with open(path_to_csv) as csv_file:
@@ -195,7 +195,7 @@ def _dump_into_csv_task(
         file_path = file_paths[i]
         try:
             entry = parser_func(file_path)
-        except Exception:
+        except Exception as e:
             tb = traceback.format_exc()
             with open(error_path, 'a+') as error_file:
                 csv.writer(error_file).writerow([file_path, tb])
