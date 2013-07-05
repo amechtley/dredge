@@ -63,7 +63,11 @@ def do_multi_parse_to_csv(
         file_paths, task_count
     )
     # get the csv headers by just parsing a test file
-    test_entry = parser_func(sorted_file_paths[0])
+    test_entry = None
+    i = 0
+    while not test_entry:
+        test_entry = parser_func(sorted_file_paths[i])
+        i += 1
     if hasattr(test_entry, '_fields'):
         csv_headers = test_entry._fields
         cls = test_entry.__class__
