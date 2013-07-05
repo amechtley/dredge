@@ -111,7 +111,8 @@ def mass_download(
             if get_max_page_expression is None:
                 # save the data to a file
                 path_to_file_on_disk = os.path.join(
-                    output_directory, '%s.%s' % (item_id, file_extension)
+                    output_directory,
+                    '%s.%s' % (urllib2.quote(item_id), file_extension)
                 )
                 with open(path_to_file_on_disk, 'w+') as file_on_disk:
                     file_on_disk.write(downloaded_data)
@@ -122,7 +123,9 @@ def mass_download(
                 max_page = get_max_page_expression(soup)
                 for page_number in xrange(1, max_page + 1):
                     # skip if a file has already been downloaded
-                    file_name = '%s-%04i.html' % (item_id, page_number)
+                    file_name = '%s-%04i.html' % (
+                        urllib2.quote(item_id), page_number
+                    )
                     if file_name in os.listdir(output_directory):
                         continue
                     # download the individual page
