@@ -112,7 +112,9 @@ def mass_download(
                 # save the data to a file
                 path_to_file_on_disk = os.path.join(
                     output_directory,
-                    '%s.%s' % (urllib2.quote(item_id, safe=''), file_extension)
+                    '%s.%s' % (
+                        urllib2.quote(str(item_id), safe=''), file_extension
+                    )
                 )
                 with open(path_to_file_on_disk, 'w+') as file_on_disk:
                     file_on_disk.write(downloaded_data)
