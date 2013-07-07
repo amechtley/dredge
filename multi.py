@@ -41,7 +41,10 @@ CPU_COUNT = multiprocessing.cpu_count()
 
 def do_multi_parse_to_csv(
         file_paths, output_folder, task_name, parser_func,
-        cores_to_reserve=1, delimiter=',', are_ids_unique=True
+        cores_to_reserve=1,
+        delimiter=',',
+        are_ids_unique=True,
+        include_headers=True
 ):
     """
     Parse a collection of files across multiple processes and dump the output
@@ -56,6 +59,8 @@ def do_multi_parse_to_csv(
     @param delimiter: Delimiter to use in csv output.
     @param are_ids_unique: True if there is a unique id column; otherwise,
         False.
+    @param include_headers: True if the final output should include headers;
+        otherwise, False.
     """
     # balance the load across all tasks
     task_count = get_num_tasks(cores_to_reserve, file_paths)
@@ -63,17 +68,20 @@ def do_multi_parse_to_csv(
         file_paths, task_count
     )
     # get the csv headers by just parsing a test file
-    test_entry = None
-    i = 0
-    while not test_entry:
-        test_entry = parser_func(sorted_file_paths[i])
-        i += 1
-    if hasattr(test_entry, '_fields'):
-        csv_headers = test_entry._fields
-        cls = test_entry.__class__
+    if include_headers:
+        test_entry = None
+        i = 0
+        while not test_entry:
+            test_entry = parser_func(sorted_file_paths[i])
+            i += 1
+        if hasattr(test_entry, '_fields'):
+            csv_headers = test_entry._fields
+            cls = test_entry.__class__
+        else:
+            csv_headers = test_entry[0]._fields
+            cls = test_entry[0].__class__
     else:
-        csv_headers = test_entry[0]._fields
-        cls = test_entry[0].__class__
+        csv_headers = None
     # ensure the output directory exists
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -91,13 +99,17 @@ def do_multi_parse_to_csv(
         cores_to_reserve=cores_to_reserve
     )
     # stitch files together
+    # TODO: Make this more efficient so the whole thing isn't gobbed up in ram
     ids = set()
     lines = list()
-    error_lines = [['file', 'error']]
+    error_lines = list()
     for i in xrange(task_count):
         path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
         with open(path_to_csv) as csv_file:
-            for row in csv.reader(csv_file, delimiter=delimiter):
+            reader = csv.reader(csv_file, delimiter=delimiter)
+            if include_headers:
+                reader.next()
+            for row in reader:
                 entry = cls(*row)
                 if not are_ids_unique or entry.id not in ids:
                     lines.append(row)
@@ -106,17 +118,24 @@ def do_multi_parse_to_csv(
             output_folder, '%s-%i-errors.csv' % (task_name, i)
         )
         with open(path_to_error_log) as csv_file:
-            error_lines += [row for row in csv.reader(csv_file)][1:]
+            reader = csv.reader(csv_file)
+            reader.next()
+            error_lines += [row for row in reader]
     # clean up final output
     path_to_final_output = os.path.join(output_folder, '%s.csv' % task_name)
     with open(path_to_final_output, 'w+') as csv_file:
-        csv.writer(csv_file, delimiter=delimiter).writerows(lines)
+        writer = csv.writer(csv_file, delimiter=delimiter)
+        if include_headers:
+            writer.writerow(csv_headers)
+        writer.writerows(lines)
     path_to_final_error_log = os.path.join(
         output_folder, '%s-errors.csv' % task_name
     )
     # clean up error log
     with open(path_to_final_error_log, 'w+') as csv_file:
-        csv.writer(csv_file).writerows(error_lines)
+        writer = csv.writer(csv_file)
+        writer.writerow(['file', 'error'])
+        writer.writerows(error_lines)
     # remove intermediate files
     for i in xrange(task_count):
         path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
@@ -186,7 +205,8 @@ def _dump_into_csv_task(
     )
     if not os.path.exists(path_to_csv):
         with open(path_to_csv, 'w+') as csv_file:
-            csv.writer(csv_file, delimiter=delimiter).writerow(csv_headers)
+            if csv_headers is not None:
+                csv.writer(csv_file, delimiter=delimiter).writerow(csv_headers)
     # create error log if it doesn't exist
     error_path = os.path.join(
         output_folder, '%s-%i-errors.csv' % (task_name, kwargs['_task_index'])
