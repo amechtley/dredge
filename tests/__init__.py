@@ -29,6 +29,9 @@ import os
 import shutil
 import uuid
 
+## the folder containing test files
+TEST_FILES_FOLDER = os.path.join(os.path.dirname(__file__), 'files')
+
 
 def get_temp_directory():
     """
