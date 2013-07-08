@@ -343,6 +343,28 @@ class TestMergeCSVFiles(unittest.TestCase):
         expected = tuple(self.expected_data)
         self.assertEqual(actual, expected)
 
+    def test_unique_ids(self):
+        """
+        Test a set of files with a custom entry class to ensure ids are unique.
+        """
+        custom_class = collections.namedtuple('CustomClass', ['id', 'value'])
+        output_path = os.path.join(self.temp_directory, 'merge.csv')
+        dredge.multi.merge_csv_files(
+            input_paths=[
+                os.path.join(
+                    dredge.tests.TEST_FILES_FOLDER, 'merge-%02i.csv' % i
+                ) for i in range(4)
+            ] * 2,
+            output_path=output_path,
+            delimiter=',',
+            include_headers=True,
+            entry_class=custom_class
+        )
+        with open(output_path) as csv_file:
+            actual = tuple(tuple(row) for row in csv.reader(csv_file))
+        expected = tuple(self.expected_headers + self.expected_data)
+        self.assertEqual(actual, expected)
+
 
 class TestGetNumTasks(unittest.TestCase):
     """

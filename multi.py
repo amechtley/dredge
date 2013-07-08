@@ -99,48 +99,26 @@ def do_multi_parse_to_csv(
         cores_to_reserve=cores_to_reserve
     )
     # stitch output files together
-    path_to_final_output = os.path.join(output_folder, '%s.csv' % task_name)
-    # stitch error logs together
-    path_to_final_error_log = os.path.join(
-        output_folder, '%s-errors.csv' % task_name
+    merge_csv_files(
+        input_paths=[
+            os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
+            for i in xrange(task_count)
+        ],
+        output_path=os.path.join(output_folder, '%s.csv' % task_name),
+        delimiter=delimiter,
+        include_headers=include_headers,
+        entry_class=cls
     )
-
-
-
-    # TODO: Make this more efficient so the whole thing isn't gobbed up in ram
-    ids = set()
-    lines = list()
-    error_lines = list()
-    for i in xrange(task_count):
-        path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
-        with open(path_to_csv) as csv_file:
-            reader = csv.reader(csv_file, delimiter=delimiter)
-            if include_headers:
-                reader.next()
-            for row in reader:
-                entry = cls(*row)
-                if not are_ids_unique or entry.id not in ids:
-                    lines.append(row)
-                    ids.add(entry.id)
-        path_to_error_log = os.path.join(
-            output_folder, '%s-%i-errors.csv' % (task_name, i)
-        )
-        with open(path_to_error_log) as csv_file:
-            reader = csv.reader(csv_file)
-            reader.next()
-            error_lines += [row for row in reader]
-    # clean up final output
-
-    with open(path_to_final_output, 'w+') as csv_file:
-        writer = csv.writer(csv_file, delimiter=delimiter)
-        if include_headers:
-            writer.writerow(csv_headers)
-        writer.writerows(lines)
-    # clean up error log
-    with open(path_to_final_error_log, 'w+') as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(['file', 'error'])
-        writer.writerows(error_lines)
+    # stitch error logs together
+    merge_csv_files(
+        input_paths=[
+            os.path.join(output_folder, '%s-%i-errors.csv' % (task_name, i))
+            for i in xrange(task_count)
+        ],
+        output_path=os.path.join(output_folder, '%s-errors.csv' % task_name),
+        delimiter=',',
+        include_headers=include_headers
+    )
     # remove intermediate files
     for i in xrange(task_count):
         path_to_csv = os.path.join(output_folder, '%s-%i.csv' % (task_name, i))
@@ -266,7 +244,9 @@ def get_num_tasks(cores_to_reserve, data):
     return min(max(CPU_COUNT - cores_to_reserve, 1), len(data))
 
 
-def merge_csv_files(input_paths, output_path, delimiter, include_headers):
+def merge_csv_files(
+        input_paths, output_path, delimiter, include_headers, entry_class=None
+):
     """
     Stitch together multiple csv files.
     @param input_paths: Collection of paths to files to stitch.
@@ -274,21 +254,41 @@ def merge_csv_files(input_paths, output_path, delimiter, include_headers):
     @param delimiter: Delimiter used in the input files.
     @param include_headers: True if the intermediate files contain headers (and
         the final should); otherwise, False.
+    @param entry_class: If not set to None, then the class used to ensure ids
+        are unique in the final output. This class must be a namedtuple with an
+        'id' attribute.
     """
     final_output = open(output_path, 'w+')
     writer = csv.writer(final_output, delimiter=delimiter)
     are_headers_written = False
-    for input_file in input_paths:
-        with open(input_file) as csv_file:
-            reader = csv.reader(csv_file, delimiter=delimiter)
-            if include_headers:
-                if not are_headers_written:
-                    writer.writerow(reader.next())
-                    are_headers_written = True
-                else:
-                    reader.next()
-            for row in reader:
-                writer.writerow(row)
+    if entry_class is None:
+        for input_file in input_paths:
+            with open(input_file) as csv_file:
+                reader = csv.reader(csv_file, delimiter=delimiter)
+                if include_headers:
+                    if not are_headers_written:
+                        writer.writerow(reader.next())
+                        are_headers_written = True
+                    else:
+                        reader.next()
+                for row in reader:
+                    writer.writerow(row)
+    else:
+        ids = set()
+        for input_file in input_paths:
+            with open(input_file) as csv_file:
+                reader = csv.reader(csv_file, delimiter=delimiter)
+                if include_headers:
+                    if not are_headers_written:
+                        writer.writerow(reader.next())
+                        are_headers_written = True
+                    else:
+                        reader.next()
+                for row in reader:
+                    entry = entry_class(*row)
+                    if not entry.id in ids:
+                        writer.writerow(row)
+                        ids.add(entry.id)
     final_output.close()
 
 
