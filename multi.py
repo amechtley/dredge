@@ -98,7 +98,15 @@ def do_multi_parse_to_csv(
         ),
         cores_to_reserve=cores_to_reserve
     )
-    # stitch files together
+    # stitch output files together
+    path_to_final_output = os.path.join(output_folder, '%s.csv' % task_name)
+    # stitch error logs together
+    path_to_final_error_log = os.path.join(
+        output_folder, '%s-errors.csv' % task_name
+    )
+
+
+
     # TODO: Make this more efficient so the whole thing isn't gobbed up in ram
     ids = set()
     lines = list()
@@ -122,15 +130,12 @@ def do_multi_parse_to_csv(
             reader.next()
             error_lines += [row for row in reader]
     # clean up final output
-    path_to_final_output = os.path.join(output_folder, '%s.csv' % task_name)
+
     with open(path_to_final_output, 'w+') as csv_file:
         writer = csv.writer(csv_file, delimiter=delimiter)
         if include_headers:
             writer.writerow(csv_headers)
         writer.writerows(lines)
-    path_to_final_error_log = os.path.join(
-        output_folder, '%s-errors.csv' % task_name
-    )
     # clean up error log
     with open(path_to_final_error_log, 'w+') as csv_file:
         writer = csv.writer(csv_file)
@@ -259,6 +264,32 @@ def get_num_tasks(cores_to_reserve, data):
     @return: The number of tasks over which the process will be distributed.
     """
     return min(max(CPU_COUNT - cores_to_reserve, 1), len(data))
+
+
+def merge_csv_files(input_paths, output_path, delimiter, include_headers):
+    """
+    Stitch together multiple csv files.
+    @param input_paths: Collection of paths to files to stitch.
+    @param output_path: Path where the final output should be saved.
+    @param delimiter: Delimiter used in the input files.
+    @param include_headers: True if the intermediate files contain headers (and
+        the final should); otherwise, False.
+    """
+    final_output = open(output_path, 'w+')
+    writer = csv.writer(final_output, delimiter=delimiter)
+    are_headers_written = False
+    for input_file in input_paths:
+        with open(input_file) as csv_file:
+            reader = csv.reader(csv_file, delimiter=delimiter)
+            if include_headers:
+                if not are_headers_written:
+                    writer.writerow(reader.next())
+                    are_headers_written = True
+                else:
+                    reader.next()
+            for row in reader:
+                writer.writerow(row)
+    final_output.close()
 
 
 def sort_file_paths_for_load_balancing(file_paths, task_count):

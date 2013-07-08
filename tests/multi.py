@@ -36,10 +36,9 @@ import dredge.multi
 import dredge.tests
 
 ## paths to test files
-_test_files = [
-    os.path.join(
-        os.path.join(os.path.dirname(__file__), 'files'), '%02i.xml' % i
-    ) for i in range(1, 9)
+_test_xml_files = [
+    os.path.join(dredge.tests.TEST_FILES_FOLDER, '%02i.xml' % i)
+    for i in range(1, 9)
 ]
 ## a simple type corresponding to the data in the test files
 Note = collections.namedtuple(
@@ -131,7 +130,7 @@ class TestDoMultiParseToCSV(unittest.TestCase):
         """
         self.temp_directory = dredge.tests.get_temp_directory()
         dredge.multi.do_multi_parse_to_csv(
-            file_paths=_test_files,
+            file_paths=_test_xml_files,
             output_folder=self.temp_directory,
             task_name='notes',
             parser_func=parser_func,
@@ -195,7 +194,7 @@ class TestDoMultiProcess(unittest.TestCase):
         notes = tuple(
             itertools.chain.from_iterable(
                 dredge.multi.do_multi_process(
-                    data=_test_files,
+                    data=_test_xml_files,
                     task=parser_task,
                     cores_to_reserve=1
                 )
@@ -243,6 +242,106 @@ class TestGetMultiprocessSliceRanges(unittest.TestCase):
         )
         actual = dredge.multi.get_multiprocess_slice_ranges(8, 14)
         self.assertEqual(expected, actual)
+
+
+class TestMergeCSVFiles(unittest.TestCase):
+    """
+    Test the merge_csv_files() method.
+    """
+    def setUp(self):
+        """
+        SOME DESCRIPTION
+        """
+        self.temp_directory = dredge.tests.get_temp_directory()
+        self.expected_headers = [('Id', 'Value')]
+        self.expected_data = [
+            ('0', '0'),
+            ('1', '10'),
+            ('2', '20'),
+            ('3', '30'),
+            ('4', '0'),
+            ('5', '10'),
+            ('6', '20'),
+            ('7', '30'),
+            ('8', '0'),
+            ('9', '10'),
+            ('10', '20'),
+            ('11', '30'),
+            ('12', '0'),
+            ('13', '10'),
+            ('14', '20'),
+            ('15', '30')
+        ]
+
+    def tearDown(self):
+        """
+        Clean up the temp directory.
+        """
+        shutil.rmtree(self.temp_directory)
+
+    def test_stitch(self):
+        """
+        Test stitching the test data.
+        """
+        output_path = os.path.join(self.temp_directory, 'merge.csv')
+        dredge.multi.merge_csv_files(
+            input_paths=[
+                os.path.join(
+                    dredge.tests.TEST_FILES_FOLDER, 'merge-%02i.csv' % i
+                ) for i in range(4)
+            ],
+            output_path=output_path,
+            delimiter=',',
+            include_headers=True
+        )
+        with open(output_path) as csv_file:
+            actual = tuple(tuple(row) for row in csv.reader(csv_file))
+        expected = tuple(self.expected_headers + self.expected_data)
+        self.assertEqual(actual, expected)
+
+    def test_delimiter(self):
+        """
+        Test using a non-comma delimiter.
+        """
+        output_path = os.path.join(self.temp_directory, 'merge-tab_delimiter.csv')
+        dredge.multi.merge_csv_files(
+            input_paths=[
+                os.path.join(
+                    dredge.tests.TEST_FILES_FOLDER,
+                    'merge-%02i-tab_delimiter.csv' % i
+                ) for i in range(4)
+            ],
+            output_path=output_path,
+            delimiter='\t',
+            include_headers=True
+        )
+        with open(output_path) as csv_file:
+            actual = tuple(
+                tuple(row) for row in csv.reader(csv_file, delimiter='\t')
+            )
+        expected = tuple(self.expected_headers + self.expected_data)
+        self.assertEqual(actual, expected)
+
+    def test_without_headers(self):
+        """
+        Test a set of files with no headers
+        """
+        output_path = os.path.join(self.temp_directory, 'merge-no_headers.csv')
+        dredge.multi.merge_csv_files(
+            input_paths=[
+                os.path.join(
+                    dredge.tests.TEST_FILES_FOLDER,
+                    'merge-%02i-no_headers.csv' % i
+                ) for i in range(4)
+            ],
+            output_path=output_path,
+            delimiter=',',
+            include_headers=False
+        )
+        with open(output_path) as csv_file:
+            actual = tuple(tuple(row) for row in csv.reader(csv_file))
+        expected = tuple(self.expected_data)
+        self.assertEqual(actual, expected)
 
 
 class TestGetNumTasks(unittest.TestCase):
@@ -313,7 +412,7 @@ class TestSortFilePathsForLoadBalancing(unittest.TestCase):
             os.path.join(test_files_dir, '05.xml'),  # 153 bytes +
             os.path.join(test_files_dir, '01.xml')   # 122 bytes = 275 bytes
         )
-        actual = dredge.multi.sort_file_paths_for_load_balancing(_test_files, 4)
+        actual = dredge.multi.sort_file_paths_for_load_balancing(_test_xml_files, 4)
         self.assertEqual(expected, actual)
 
 
