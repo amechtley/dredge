@@ -107,7 +107,7 @@ def do_multi_parse_to_csv(
         output_path=os.path.join(output_folder, '%s.csv' % task_name),
         delimiter=delimiter,
         include_headers=include_headers,
-        entry_class=cls
+        entry_class=cls if are_ids_unique else None
     )
     # stitch error logs together
     merge_csv_files(
