@@ -118,7 +118,7 @@ def do_multi_parse_to_csv(
         ],
         output_path=os.path.join(output_folder, '%s-errors.csv' % task_name),
         delimiter=',',
-        include_headers=include_headers
+        include_headers=True
     )
     # remove intermediate files
     for i in xrange(task_count):
