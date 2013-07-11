@@ -81,6 +81,7 @@ def do_multi_parse_to_csv(
             csv_headers = test_entry[0]._fields
             cls = test_entry[0].__class__
     else:
+        cls = None
         csv_headers = None
     # ensure the output directory exists
     if not os.path.exists(output_folder):
