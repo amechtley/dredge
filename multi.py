@@ -99,6 +99,8 @@ def do_multi_parse_to_csv(
         ),
         cores_to_reserve=cores_to_reserve
     )
+    # clear out any large objects that may be attached to the parser function
+    del(parser_func)
     # stitch output files together
     merge_csv_files(
         input_paths=[
