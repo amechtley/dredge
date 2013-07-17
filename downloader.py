@@ -126,7 +126,7 @@ def mass_download(
                 for page_number in xrange(1, max_page + 1):
                     # skip if a file has already been downloaded
                     file_name = '%s-%04i.html' % (
-                        urllib2.quote(item_id, safe=''), page_number
+                        urllib2.quote(str(item_id), safe=''), page_number
                     )
                     if file_name in os.listdir(output_directory):
                         continue
