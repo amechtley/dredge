@@ -136,7 +136,7 @@ class TestDoMultiParseToCSV(unittest.TestCase):
             parser_func=parser_func,
             cores_to_reserve=1,
             delimiter=',',
-            are_ids_unique=True
+            id_column=0
         )
 
     def tearDown(self):
@@ -292,7 +292,7 @@ class TestMergeCSVFiles(unittest.TestCase):
             ],
             output_path=output_path,
             delimiter=',',
-            include_headers=True
+            headers=self.expected_headers
         )
         with open(output_path) as csv_file:
             actual = tuple(tuple(row) for row in csv.reader(csv_file))
@@ -313,7 +313,7 @@ class TestMergeCSVFiles(unittest.TestCase):
             ],
             output_path=output_path,
             delimiter='\t',
-            include_headers=True
+            headers=self.expected_headers
         )
         with open(output_path) as csv_file:
             actual = tuple(
@@ -336,7 +336,7 @@ class TestMergeCSVFiles(unittest.TestCase):
             ],
             output_path=output_path,
             delimiter=',',
-            include_headers=False
+            headers=None
         )
         with open(output_path) as csv_file:
             actual = tuple(tuple(row) for row in csv.reader(csv_file))
@@ -347,7 +347,6 @@ class TestMergeCSVFiles(unittest.TestCase):
         """
         Test a set of files with a custom entry class to ensure ids are unique.
         """
-        custom_class = collections.namedtuple('CustomClass', ['id', 'value'])
         output_path = os.path.join(self.temp_directory, 'merge.csv')
         dredge.multi.merge_csv_files(
             input_paths=[
@@ -357,8 +356,8 @@ class TestMergeCSVFiles(unittest.TestCase):
             ] * 2,
             output_path=output_path,
             delimiter=',',
-            include_headers=True,
-            entry_class=custom_class
+            headers=self.expected_headers,
+            id_column=0
         )
         with open(output_path) as csv_file:
             actual = tuple(tuple(row) for row in csv.reader(csv_file))

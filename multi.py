@@ -37,13 +37,15 @@ csv.field_size_limit(sys.maxsize)
 
 ## the number of cores to use for job scheduling
 CPU_COUNT = multiprocessing.cpu_count()
+## headers for error log csv output
+ERROR_LOG_HEADERS = ['file', 'error']
 
 
 def do_multi_parse_to_csv(
         file_paths, output_folder, task_name, parser_func,
         cores_to_reserve=1,
         delimiter=',',
-        are_ids_unique=True,
+        id_column=None,
         include_headers=True
 ):
     """
@@ -57,8 +59,8 @@ def do_multi_parse_to_csv(
         collection of such objects.
     @param cores_to_reserve: The number of cores to leave idle.
     @param delimiter: Delimiter to use in csv output.
-    @param are_ids_unique: True if there is a unique id column; otherwise,
-        False.
+    @param id_column: None if the data contain no primary key; otherwise, the
+        index of the primary key in the namedtuple type produced by parser_func.
     @param include_headers: True if the final output should include headers;
         otherwise, False.
     """
@@ -76,12 +78,9 @@ def do_multi_parse_to_csv(
             i += 1
         if hasattr(test_entry, '_fields'):
             csv_headers = test_entry._fields
-            cls = test_entry.__class__
         else:
             csv_headers = test_entry[0]._fields
-            cls = test_entry[0].__class__
     else:
-        cls = None
         csv_headers = None
     # ensure the output directory exists
     if not os.path.exists(output_folder):
@@ -109,8 +108,8 @@ def do_multi_parse_to_csv(
         ],
         output_path=os.path.join(output_folder, '%s.csv' % task_name),
         delimiter=delimiter,
-        include_headers=include_headers,
-        entry_class=cls if are_ids_unique else None
+        headers=csv_headers,
+        id_column=id_column
     )
     # stitch error logs together
     merge_csv_files(
@@ -120,7 +119,7 @@ def do_multi_parse_to_csv(
         ],
         output_path=os.path.join(output_folder, '%s-errors.csv' % task_name),
         delimiter=',',
-        include_headers=True
+        headers=ERROR_LOG_HEADERS
     )
     # remove intermediate files
     for i in xrange(task_count):
@@ -199,7 +198,7 @@ def _dump_into_csv_task(
     )
     if not os.path.exists(error_path):
         with open(error_path, 'w+') as error_file:
-            csv.writer(error_file).writerow(['file', 'error'])
+            csv.writer(error_file).writerow(ERROR_LOG_HEADERS)
     # write each entry to the csv
     for i in xrange(slice_start, slice_end):
         file_path = file_paths[i]
@@ -248,27 +247,30 @@ def get_num_tasks(cores_to_reserve, data):
 
 
 def merge_csv_files(
-        input_paths, output_path, delimiter, include_headers, entry_class=None
+        input_paths, output_path, delimiter, headers=None, id_column=None
 ):
     """
     Stitch together multiple csv files.
     @param input_paths: Collection of paths to files to stitch.
     @param output_path: Path where the final output should be saved.
     @param delimiter: Delimiter used in the input files.
-    @param include_headers: True if the intermediate files contain headers (and
-        the final should); otherwise, False.
-    @param entry_class: If not set to None, then the class used to ensure ids
-        are unique in the final output. This class must be a namedtuple with an
-        'id' attribute.
+    @param headers: If None, then no headers are assumed to exist in the data,
+        and none are applied to the merged result; otherwise, the first row of
+        each input file is assumed to include headers, and these headers will be
+        added to the merged output.
+    @param id_column: If not set to None, then all merged results are included;
+        otherwise, if a numeric value is supplied, the column with this index is
+        presumed to be a primary key, and only the first item with the id will
+        be included in the merged result.
     """
     final_output = open(output_path, 'w+')
     writer = csv.writer(final_output, delimiter=delimiter)
     are_headers_written = False
-    if entry_class is None:
+    if id_column is  None:
         for input_file in input_paths:
             with open(input_file) as csv_file:
                 reader = csv.reader(csv_file, delimiter=delimiter)
-                if include_headers:
+                if headers is not None:
                     if not are_headers_written:
                         writer.writerow(reader.next())
                         are_headers_written = True
@@ -281,17 +283,16 @@ def merge_csv_files(
         for input_file in input_paths:
             with open(input_file) as csv_file:
                 reader = csv.reader(csv_file, delimiter=delimiter)
-                if include_headers:
+                if headers is not None:
                     if not are_headers_written:
                         writer.writerow(reader.next())
                         are_headers_written = True
                     else:
                         reader.next()
                 for row in reader:
-                    entry = entry_class(*row)
-                    if not entry.id in ids:
+                    if not row[id_column] in ids:
                         writer.writerow(row)
-                        ids.add(entry.id)
+                        ids.add(row[id_column])
     final_output.close()
 
 
