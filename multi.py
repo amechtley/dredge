@@ -266,7 +266,7 @@ def merge_csv_files(
     final_output = open(output_path, 'w+')
     writer = csv.writer(final_output, delimiter=delimiter)
     are_headers_written = False
-    if id_column is  None:
+    if id_column is None:
         for input_file in input_paths:
             with open(input_file) as csv_file:
                 reader = csv.reader(csv_file, delimiter=delimiter)
