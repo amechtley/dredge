@@ -25,16 +25,38 @@ This module contains methods for performing mass downloads.
 """
 
 import bs4
+import cookielib
 import csv
 import os
 import re
 import time
 import traceback
+import urllib
 import urllib2
 
 
 ## name of a csv file to dump info about items for which there were errors
 ERROR_LOG_NAME = 'errors.csv'
+
+
+def get_credentialed_opener(login_url, login_credentials):
+    """
+    Get an opener with login credentials.
+    @return: An OpenerDirector with the supplied login credentials.
+    @param login_url: URL to submit login credentials to. E.g.,
+        http://boardgamegeek.com/login
+    @param login_credentials: Dict of form parameters for login url. E.g.,
+        {'username': username, 'password': password}
+    """
+    try:
+        login_credentials = urllib.urlencode(login_credentials)
+    except TypeError as e:
+        e.message = 'You must supply a dict of login credentials'
+    opener = urllib2.build_opener(
+        urllib2.HTTPCookieProcessor(cookielib.CookieJar())
+    )
+    opener.open(login_url, login_credentials)
+    return opener
 
 
 def mass_download(
@@ -43,7 +65,8 @@ def mass_download(
         download_burst_count=50, sleep_time=30,
         segment_url_template=None,
         segment_url_format_expression=None,
-        get_max_page_expression=None
+        get_max_page_expression=None,
+        opener=None
 ):
     """
     Downloads a bunch of data for the supplied items_ids using the supplied url
@@ -75,6 +98,8 @@ def mass_download(
                 '\d+', soup.find('span', class_='geekpages').text
             )
         )
+    @param opener: A custom OpenerDirector if required, such as when login
+        credentials must be supplied. See get_credentialed_opener().
     """
     # create the output xml_directory if it does not already exist
     if not os.path.exists(output_directory):
@@ -98,6 +123,12 @@ def mass_download(
             if downloaded_file_name_match.match(file_name)
         ] + error_items
     )
+    # determine what opener method to use
+    if opener is not None:
+        opener_method = opener.open
+    else:
+        opener_method = urllib2.urlopen
+    # download items
     download_count = 0
     for item_id in item_ids:
         # skip already downloaded data
@@ -106,7 +137,7 @@ def mass_download(
         # download the data
         url = url_template.format(**url_format_expression(item_id))
         try:
-            downloaded_data = urllib2.urlopen(url).read()
+            downloaded_data = opener_method(url).read()
             # code path if the data does not need to be parsed
             if get_max_page_expression is None:
                 # save the data to a file
@@ -121,7 +152,7 @@ def mass_download(
             # otherwise look for the page counter in the data
             else:
                 # assume it's html
-                soup = bs4.BeautifulSoup(urllib2.urlopen(url).read(), 'lxml')
+                soup = bs4.BeautifulSoup(opener_method(url).read(), 'lxml')
                 max_page = get_max_page_expression(soup)
                 for page_number in xrange(1, max_page + 1):
                     # skip if a file has already been downloaded
@@ -134,7 +165,7 @@ def mass_download(
                     page_url = segment_url_template.format(
                         **segment_url_format_expression(item_id, page_number)
                     )
-                    html_data = urllib2.urlopen(page_url).read()
+                    html_data = opener_method(page_url).read()
                     # save the data to a file
                     path_to_file_on_disk = os.path.join(
                         output_directory, file_name
